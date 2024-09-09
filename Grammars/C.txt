@@ -1,0 +1,24 @@
+program -> 'void' ID '(' ')' '{' statements '}'
+statements -> statements statement | statement
+follow_statements -> statement | '{' statements '}' | '{' '}'
+statement -> declaration_stmt ';' | assignment_stmts ';' | 'break' ';' | 'continue' ';' | 'cout' printable ';' | if_stmt | switch_stmt | while_stmt
+printable -> printable '<<' disjunction | '<<' disjunction
+declaration_stmt -> 'int' assignment_stmts
+assignment_stmts -> assignment_stmts ',' assignment_stmt -> assignment_stmt
+assignment_stmt -> ID '=' disjunction
+if_stmt -> 'if' '(' disjunction ')' follow_statements 'else' follow_statements
+switch_stmt -> 'switch' '(' ID ')' '{' cases '}'
+cases -> 'case' INT ':' statements cases | 'default' ':' statements
+while_stmt -> 'while' '(' disjunction ')' follow_statements
+disjunction -> conjunction | disjunction '||' conjunction
+conjunction -> inversion | conjunction '&&' inversion
+inversion -> '!' inversion | comparison
+comparison -> eq_sum | lt_sum | gt_sum | sum
+eq_sum -> sum '==' sum
+lt_sum -> sum '<' sum
+gt_sum -> sum '>' sum
+sum -> sum '+' term | sum '-' term | term
+term -> term '*' modulo | term '/' modulo | modulo
+modulo -> modulo '%' factor | factor
+factor -> '+' primary | '-' primary | '(' disjunction ')' | primary
+primary -> ID | INT

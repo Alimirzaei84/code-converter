@@ -1,0 +1,193 @@
+package Languages.Java;
+
+import java_cup.runtime.*;
+import Transpiler.AbstractSyntaxTree;
+import Transpiler.NodeType;
+import Transpiler.RuleType;
+
+class JavaParser;
+
+terminal VOID, INT, LPAR, RPAR, LBRACKET, RBRACKET, SEMICOLON, COMMA, BREAK, CONTINUE, PRINT, EQ, EQUAL, IF, STATIC;
+terminal ELSE, SWITCH, CASE, COLON, DEFAULT, WHILE, OR, AND, NOT, LT, GT, PLUS, MINUS, TIMES, DIVIDES, MOD, PUBLIC;
+terminal String NUM, ID;
+
+non terminal AbstractSyntaxTree program, statements, follow_statements, statement, declaration_stmt, assignment_stmts;
+non terminal AbstractSyntaxTree assignment_stmt, if_stmt, switch_stmt, cases, while_stmt, disjunction, conjunction, inversion;
+non terminal AbstractSyntaxTree comparison, eq_sum, lt_sum, gt_sum, sum, term, modulo, factor, primary;
+
+start with program;
+
+program             ::=
+                      PUBLIC STATIC VOID ID:i LPAR RPAR LBRACKET statements:s RBRACKET
+                        {: AbstractSyntaxTree idNode = new AbstractSyntaxTree(NodeType.ID, i);
+                           RESULT = new AbstractSyntaxTree(NodeType.PROGRAM, RuleType.DEFAULT, idNode, s); :}
+                    ;
+
+statements          ::=
+                      statements:ss statement:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENTS, RuleType.MULTI, ss, s); :}
+                    | statement:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENTS, RuleType.SINGLE, s); :}
+                    ;
+
+follow_statements   ::=
+                      LBRACKET statements:s RBRACKET
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FOLLOW_STATEMENTS, RuleType.MULTI, s); :}
+                    | statement:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FOLLOW_STATEMENTS, RuleType.SINGLE, s); :}
+                    | LBRACKET RBRACKET
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FOLLOW_STATEMENTS, RuleType.EMPTY); :}
+                    ;
+
+statement           ::=
+                      declaration_stmt:d SEMICOLON
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.DECLARE, d); :}
+                    | assignment_stmts:a SEMICOLON
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.ASSIGNMENTS, a); :}
+                    | BREAK SEMICOLON
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.BREAK); :}
+                    | CONTINUE SEMICOLON
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.CONTINUE); :}
+                    | PRINT LPAR disjunction:d RPAR SEMICOLON
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.PRINT, d); :}
+                    | if_stmt:i
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.IF, i); :}
+                    | switch_stmt:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.SWITCH, s); :}
+                    | while_stmt:w
+                        {: RESULT = new AbstractSyntaxTree(NodeType.STATEMENT, RuleType.WHILE, w); :}
+                    ;
+
+declaration_stmt    ::=
+                      INT assignment_stmts:a
+                        {: RESULT = new AbstractSyntaxTree(NodeType.DECLARATION, RuleType.DEFAULT, a); :}
+                    ;
+
+assignment_stmts    ::=
+                      assignment_stmts:as COMMA assignment_stmt:a
+                        {: RESULT = new AbstractSyntaxTree(NodeType.ASSIGNMENTS, RuleType.MULTI, as, a); :}
+                    | assignment_stmt:a
+                        {: RESULT = new AbstractSyntaxTree(NodeType.ASSIGNMENTS, RuleType.SINGLE, a); :}
+                    ;
+
+assignment_stmt     ::=
+                      ID:i EQUAL disjunction:d
+                        {: AbstractSyntaxTree idNode = new AbstractSyntaxTree(NodeType.ID, i);
+                           RESULT = new AbstractSyntaxTree(NodeType.ASSIGNMENT, RuleType.DEFAULT, idNode, d); :}
+                    ;
+
+if_stmt             ::=
+                      IF LPAR disjunction:d RPAR follow_statements:f1 ELSE follow_statements:f2
+                        {: RESULT = new AbstractSyntaxTree(NodeType.IF, RuleType.DEFAULT, d, f1, f2); :}
+                    ;
+
+switch_stmt         ::=
+                      SWITCH LPAR ID:i RPAR LBRACKET cases:c RBRACKET
+                        {: AbstractSyntaxTree idNode = new AbstractSyntaxTree(NodeType.ID, i);
+                           RESULT = new AbstractSyntaxTree(NodeType.SWITCH, RuleType.DEFAULT, idNode, c); :}
+                    ;
+
+cases               ::=
+                      CASE NUM:n COLON statements:s cases:c
+                        {: AbstractSyntaxTree numNode = new AbstractSyntaxTree(NodeType.NUM, n);
+                           RESULT = new AbstractSyntaxTree(NodeType.CASES, RuleType.MULTI, numNode, s, c); :}
+                    | DEFAULT COLON statements:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.CASES, RuleType.DEFAULT, s); :}
+                    ;
+
+while_stmt          ::=
+                      WHILE LPAR disjunction:d RPAR follow_statements:f
+                        {: RESULT = new AbstractSyntaxTree(NodeType.WHILE, RuleType.DEFAULT, d, f); :}
+                    ;
+
+disjunction         ::=
+                      disjunction:d OR conjunction:c
+                        {: RESULT = new AbstractSyntaxTree(NodeType.DISJUNCTION, RuleType.MULTI, d, c); :}
+                    | conjunction:c
+                        {: RESULT = new AbstractSyntaxTree(NodeType.DISJUNCTION, RuleType.SINGLE, c); :}
+                    ;
+
+conjunction         ::=
+                      conjunction:c AND inversion:i
+                        {: RESULT = new AbstractSyntaxTree(NodeType.CONJUNCTION, RuleType.MULTI, c, i); :}
+                    | inversion:i
+                        {: RESULT = new AbstractSyntaxTree(NodeType.CONJUNCTION, RuleType.SINGLE, i); :}
+                    ;
+
+inversion           ::=
+                      NOT inversion:i
+                        {: RESULT = new AbstractSyntaxTree(NodeType.INVERSION, RuleType.MULTI, i); :}
+                    | comparison:c
+                        {: RESULT = new AbstractSyntaxTree(NodeType.INVERSION, RuleType.SINGLE, c); :}
+                    ;
+
+comparison          ::=
+                      eq_sum:e
+                        {: RESULT = new AbstractSyntaxTree(NodeType.COMPARISON, RuleType.EQ, e); :}
+                    | lt_sum:l
+                        {: RESULT = new AbstractSyntaxTree(NodeType.COMPARISON, RuleType.LT, l); :}
+                    | gt_sum:g
+                        {: RESULT = new AbstractSyntaxTree(NodeType.COMPARISON, RuleType.GT, g); :}
+                    | sum:s
+                        {: RESULT = new AbstractSyntaxTree(NodeType.COMPARISON, RuleType.DEFAULT, s); :}
+                    ;
+
+eq_sum              ::=
+                      sum:s1 EQ sum:s2
+                        {: RESULT = new AbstractSyntaxTree(NodeType.EQ, RuleType.DEFAULT, s1, s2); :}
+                    ;
+
+lt_sum              ::=
+                      sum:s1 LT sum:s2
+                        {: RESULT = new AbstractSyntaxTree(NodeType.LT, RuleType.DEFAULT, s1, s2); :}
+                    ;
+
+gt_sum              ::=
+                      sum:s1 GT sum:s2
+                        {: RESULT = new AbstractSyntaxTree(NodeType.GT, RuleType.DEFAULT, s1, s2); :}
+                    ;
+
+sum                 ::=
+                      sum:s PLUS term:t
+                        {: RESULT = new AbstractSyntaxTree(NodeType.SUM, RuleType.ADD, s, t); :}
+                    | sum:s MINUS term:t
+                        {: RESULT = new AbstractSyntaxTree(NodeType.SUM, RuleType.SUB, s, t); :}
+                    | term:t
+                        {: RESULT = new AbstractSyntaxTree(NodeType.SUM, RuleType.DEFAULT, t); :}
+                    ;
+
+term                ::=
+                      term:t TIMES modulo:m
+                        {: RESULT = new AbstractSyntaxTree(NodeType.TERM, RuleType.TIMES, t, m); :}
+                    | term:t DIVIDES modulo:m
+                        {: RESULT = new AbstractSyntaxTree(NodeType.TERM, RuleType.DIVIDES, t, m); :}
+                    | modulo:m
+                        {: RESULT = new AbstractSyntaxTree(NodeType.TERM, RuleType.DEFAULT, m); :}
+                    ;
+
+modulo              ::=
+                      modulo:m MOD factor:f
+                        {: RESULT = new AbstractSyntaxTree(NodeType.MODULO, RuleType.MULTI, m, f); :}
+                    | factor:f
+                        {: RESULT = new AbstractSyntaxTree(NodeType.MODULO, RuleType.SINGLE, f); :}
+                    ;
+
+factor              ::=
+                      PLUS primary:p
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FACTOR, RuleType.POSITIVE, p); :}
+                    | MINUS primary:p
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FACTOR, RuleType.NEGATIVE, p); :}
+                    | LPAR disjunction:d RPAR
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FACTOR, RuleType.PAR, d); :}
+                    | primary:p
+                        {: RESULT = new AbstractSyntaxTree(NodeType.FACTOR, RuleType.DEFAULT, p); :}
+                    ;
+
+primary             ::=
+                      ID:i
+                        {: AbstractSyntaxTree idNode = new AbstractSyntaxTree(NodeType.ID, i);
+                           RESULT = new AbstractSyntaxTree(NodeType.PRIMARY, RuleType.VARIABLE, idNode); :}
+                    | NUM:n
+                        {: AbstractSyntaxTree numNode = new AbstractSyntaxTree(NodeType.NUM, n);
+                           RESULT = new AbstractSyntaxTree(NodeType.PRIMARY, RuleType.CONSTANT, numNode); :}
+                    ;

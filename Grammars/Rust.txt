@@ -1,0 +1,23 @@
+program ->  'fn' ID '(' ')' '{' statements '}'
+statements -> statements statement | statement
+follow_statements -> statement | '{' statements '}' | '{' '}'
+statement -> declaration_stmt ';' | assignment_stmt ';' | 'break' ';' | 'continue' ';' | 'println!' '(' disjunction ')' ';' | if_stmt | match_stmt | while_stmt
+declaration_stmt -> 'let' assignment_stmt
+assignment_stmt -> ID '=' disjunction
+if_stmt -> 'if' '(' disjunction ')' follow_statements 'else' follow_statements
+match_stmt -> 'match' ID '{' cases '}'
+cases -> options '=>' follow_statements ',' cases | '_' '=>' follow_statements
+options -> options '|' INT | INT
+while_stmt -> 'while' '(' disjunction ')' follow_statements
+disjunction -> conjunction | disjunction '||' conjunction
+conjunction -> inversion | conjunction '&&' inversion
+inversion -> '!' inversion | comparison
+comparison -> eq_sum | lt_sum | gt_sum | sum
+eq_sum -> sum '==' sum
+lt_sum -> sum '<' sum
+gt_sum -> sum '>' sum
+sum -> sum '+' term | sum '-' term | term
+term -> term '*' modulo | term '/' modulo | modulo
+modulo -> modulo '%' factor | factor
+factor -> '+' primary | '-' primary | '(' disjunction ')' | primary
+primary -> ID | INT
